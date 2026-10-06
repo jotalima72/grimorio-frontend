@@ -2,5 +2,12 @@ import test from 'node:test';import assert from 'node:assert/strict';import {fil
 const spells=[{id:1,name:'Bênção',level:1,schoolId:1},{id:2,name:'Acudir os Moribundos',level:0,schoolId:2},{id:3,name:'Bola de Fogo',level:3,schoolId:1}];
 test('busca ignora acentos sem alterar os textos',()=>{assert.deepEqual(filterPrepared(spells,'bencao','').map(s=>s.id),[1]);assert.equal(spells[0].name,'Bênção');assert.equal(normalize('NÉVOA'),'nevoa');});
 test('filtros de escola e nome são combinados',()=>{assert.deepEqual(filterPrepared(spells,'b',1).map(s=>s.id),[1,3]);assert.equal(filterPrepared(spells,'bencao',2).length,0);});
+test('círculo combina com nome e escola, incluindo truques',()=>{
+  assert.deepEqual(filterPrepared(spells,'','',0).map(s=>s.id),[2]);
+  assert.deepEqual(filterPrepared(spells,'','', '0').map(s=>s.id),[2]);
+  assert.deepEqual(filterPrepared(spells,'b',1,'3').map(s=>s.id),[3]);
+  assert.equal(filterPrepared(spells,'bencao',1,'3').length,0);
+  assert.deepEqual(filterPrepared(spells,'','',''),spells);
+});
 test('agrupamento por círculo ordena sem modificar a lista original',()=>{assert.deepEqual(groupSpells(spells).map(g=>g.level),[0,1,3]);assert.equal(spells[0].id,1);assert.equal(levelLabel(0),'Truque');assert.equal(levelLabel(3),'3º círculo');});
 
