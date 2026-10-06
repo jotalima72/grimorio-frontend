@@ -11,6 +11,7 @@ const router = createRouter({
     },
     { path: "/", component: () => import("./views/PreparedView.vue") },
     { path: "/preparar", component: () => import("./views/CatalogView.vue") },
+    { path: "/classes/:id/magias", component: () => import("./views/ClassSpellsView.vue") },
     {
       path: "/personagens",
       component: () => import("./views/CharactersView.vue"),
