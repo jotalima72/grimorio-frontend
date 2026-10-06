@@ -8,5 +8,25 @@
       "source": "/(.*)",
       "destination": "/index.html"
     }
+  ],
+  "headers": [
+    {
+      "source": "/((?!entrar$).*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/entrar",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, nofollow"
+        }
+      ]
+    }
   ]
 }

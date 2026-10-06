@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /
+Allow: /entrar$
+# Recursos necessários para renderizar a página de login.
+Allow: /assets/

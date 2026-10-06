@@ -9,7 +9,14 @@ watch(selectedId,()=>{detailFlags.value={id:null,isPrepared:false,canPrepare:fal
 async function load(){controller?.abort();const c=new AbortController();controller=c;const seq=++sequence;loading.value=true;error.value='';const q=new URLSearchParams({limit:String(limit),offset:String(offset.value)});if(name.value)q.set('name',name.value);if(school.value)q.set('schoolId',school.value);if(level.value!=='')q.set('level',level.value);if(classId.value)q.set('classId',classId.value);if(state.activeId)q.set('characterId',state.activeId);
  try{const response=await request(`/spells?${q}`,{signal:c.signal});if(seq===sequence){spells.value=response.data;total.value=response.meta.total;}}catch(e){if(e.name!=='AbortError'&&seq===sequence)error.value=e.message;}finally{if(seq===sequence)loading.value=false;}}
 async function toggle(spell){if(pendingIds.value.includes(spell.id))return;const character=activeCharacter.value;if(!character)return;const row=spells.value.find(s=>s.id===spell.id)||(detailFlags.value.id===spell.id?detailFlags.value:null);const prepared=row?.isPrepared??false;pendingIds.value.push(spell.id);try{await request(`/characters/${character.id}/prepared-spells/${spell.id}`,{method:prepared?'DELETE':'PUT'});if(state.activeId===character.id&&row)row.isPrepared=!prepared;await refreshCharacters();notify(`${spell.name} ${prepared?'removida das preparadas':'preparada'}.`);}catch(e){error.value=e.message;}finally{pendingIds.value=pendingIds.value.filter(id=>id!==spell.id);}}
-watch([name,school,classId,level],()=>{offset.value=0;clearTimeout(timer);timer=setTimeout(load,250);});watch(offset,()=>{clearTimeout(timer);load();});watch(()=>state.activeId,()=>{selectedId.value=null;classId.value=activeCharacter.value?.classId||'';offset.value=0;clearTimeout(timer);load();});
+watch([name,school,classId,level,offset,()=>state.activeId],(values,previous)=>{
+ const characterChanged=values[5]!==previous[5];
+ if(characterChanged){selectedId.value=null;classId.value=activeCharacter.value?.classId||'';}
+ const filtersChanged=characterChanged||values.slice(0,4).some((value,index)=>value!==previous[index]);
+ clearTimeout(timer);controller?.abort();sequence++;
+ if(filtersChanged&&offset.value!==0){offset.value=0;return;}
+ timer=setTimeout(load,filtersChanged&&!characterChanged?250:0);
+});
 load();onBeforeUnmount(()=>{clearTimeout(timer);sequence++;controller?.abort();});
 </script>
 <template><RouterLink to="/" class="back-link"><ArrowLeft :size="15"/>Voltar às preparadas</RouterLink><div class="page-heading"><div><p class="breadcrumb">Catálogo de magias</p><h1>Prepare sua próxima aventura.</h1><p class="page-description">{{activeCharacter?`Escolha as magias para ${activeCharacter.name}. Sua seleção é salva a cada escolha.`:'Explore o livro. Crie um personagem para começar a preparar magias.'}}</p></div><RouterLink to="/magias/nova" class="button"><Plus :size="17"/>Adicionar magia</RouterLink></div><div v-if="!activeCharacter" class="info-banner"><Library :size="20"/><span>Você está consultando o catálogo.</span><RouterLink to="/personagens" class="text-button">Criar personagem</RouterLink></div>

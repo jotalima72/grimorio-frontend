@@ -51,3 +51,11 @@ No Render, configure `CORS_ORIGINS` com a origem exata da Vercel, por exemplo `h
 4. Teste em uma tela estreita e abra um card de magia.
 
 `npm test` verifica busca e filtros; `npm run build` produz o bundle de publicação. O workflow do GitHub executa ambos automaticamente.
+
+## Buscadores
+
+O build gera `/robots.txt` e `/sitemap.xml`. Somente `/entrar` é permitido como página; `/assets/` é liberado para renderizar o login. As demais rotas recebem `X-Robots-Tag: noindex, nofollow` na Vercel. O sitemap contém apenas a URL do login. Previews da Vercel bloqueiam todo rastreamento e geram sitemap vazio.
+
+O domínio é obtido de `SITE_URL` ou da variável de produção da Vercel `VERCEL_PROJECT_PRODUCTION_URL`. Para um domínio próprio, configure `SITE_URL=https://seu-dominio.com` e faça um novo deploy. Localmente é usado `http://127.0.0.1:5173`.
+
+Robots.txt orienta robôs cooperativos, sem substituir autenticação. URLs já indexadas e bloqueadas podem continuar aparecendo sem conteúdo: nesse caso, use a ferramenta de remoção do buscador. Não são criados arquivos de verificação do Google/Bing sem os códigos fornecidos por esses serviços.
