@@ -56,3 +56,19 @@ test('trocar de conta cancela a espera e impede restaurar sessão antiga',async(
  const restoring=restore({retryDelayMs:0});await waiting;useAnotherAccount();await restoring;
  assert.equal(state.ready,true);assert.equal(state.user,null);assert.equal(sessionStorage.getItem('grimorio.token'),null);assert.equal(state.restoring,false);
 });
+
+test('cookie restaura login em nova aba sem token no sessionStorage e mantém sete dias',async()=>{
+ const {rememberSession,hasSession}=await import('../src/lib/session.js');
+ const expiresAt=new Date(Date.now()+7*86400000).toISOString();
+ rememberSession(expiresAt);assert.equal(sessionStorage.getItem('grimorio.token'),null);assert.equal(hasSession(),true);
+ state.ready=false;state.user=null;
+ globalThis.fetch=async(url,options)=>{
+  assert.equal(options.credentials,'include');assert.equal(options.headers.Authorization,undefined);
+  return String(url).endsWith('/auth/me')?json({data:{id:1,name:'Teste'},meta:{expiresAt}}):json({data:[]});
+ };
+ await restore({retryDelayMs:0});assert.equal(state.user.id,1);assert.equal(state.ready,true);
+ const saved=JSON.parse(localStorage.getItem('grimorio.session'));assert.equal(saved.expiresAt,new Date(expiresAt).getTime());
+ assert.equal(sessionStorage.getItem('grimorio.token'),null);
+ globalThis.fetch=async()=>json({error:{code:'UNAUTHENTICATED',message:'Expirada'}},401);
+ await assert.rejects(request('/auth/me'));assert.equal(localStorage.getItem('grimorio.session'),null);assert.equal(state.user,null);
+});

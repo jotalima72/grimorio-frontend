@@ -36,7 +36,7 @@ Importe o repositório do frontend. Use o preset **Vite**, Root Directory vazio,
 Em **Environment Variables**, configure:
 
 ```text
-VITE_API_BASE=https://SEU-BACKEND.onrender.com/api
+BACKEND_URL=https://SEU-BACKEND.onrender.com
 ```
 
 Configure essa variável nos ambientes desejados (Production e, se necessário, Preview/Development). Depois de mudar a variável, faça um novo deploy: o Vite incorpora o valor no build. A URL é pública; nunca coloque senha do banco ou chave secreta em uma variável `VITE_*`.
@@ -78,3 +78,15 @@ Publique primeiro o backend com a migração dos espaços e depois este frontend
 Em Magias preparadas, Configurar espaços por círculo aparece apenas para personagens ainda não configurados. Após salvar, os ajustes ficam na edição da página Personagens, junto de nome, classe e nível. Uma configuração salva com todos os totais em zero também conta como concluída. Gastar e recuperar espaços continuam disponíveis na página de magias preparadas.
 
 Na lista de magias preparadas e no seu modal, Usar magia consome um espaço do círculo daquela magia e atualiza os contadores na página. Truques são gratuitos. Sem espaços disponíveis, o botão fica desabilitado. É possível desfazer o gasto usando Recuperar 1 no marcador de espaços.
+
+## Sessão persistente de sete dias
+
+O navegador recebe um cookie HttpOnly, Secure em produção, SameSite=Lax, Path=/api, com Max-Age e Expires de sete dias após o login. O banco continua controlando a expiração absoluta: a restauração não renova os sete dias. Fechar a aba ou o navegador não apaga o cookie. O logout revoga a sessão no backend e expira o cookie.
+
+Na Vercel, configure BACKEND_URL com a origem HTTPS do Render. O gateway também aceita o VITE_API_BASE HTTPS já configurado como alternativa, para facilitar a atualização. Em produção o navegador chama /api no próprio domínio da Vercel; api/gateway.js encaminha as requisições ao Render e preserva o cookie. Esse fluxo evita cookies de terceiros. O backend continua hospedado no Render; não há conexão ao banco no frontend/gateway. CORS_ORIGINS deve continuar contendo a origem exata da Vercel.
+
+Em desenvolvimento, mantenha VITE_API_BASE=/api e API_PROXY_TARGET apontando ao backend local. O preview estático do Vite precisa desse proxy; as Functions são executadas pela Vercel.
+
+Um marcador sem credenciais fica no localStorage para indicar que uma sessão pode ser restaurada. O token não fica salvo no JavaScript. Sessões antigas da aba são migradas para o cookie na primeira validação da sessão. Quem já fechou a aba antes desta atualização precisará entrar novamente uma vez.
+
+Publique primeiro o backend e depois o frontend. Não é necessária uma migração no banco. Depois valide: entrar, fechar e reabrir o navegador, acessar o grimório e sair.

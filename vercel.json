@@ -5,6 +5,10 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/api/:path*",
+      "destination": "/api/gateway?__route=:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
@@ -28,5 +32,10 @@
         }
       ]
     }
-  ]
+  ],
+  "functions": {
+    "api/gateway.js": {
+      "maxDuration": 120
+    }
+  }
 }

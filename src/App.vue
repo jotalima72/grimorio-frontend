@@ -21,8 +21,7 @@ watch(
 onBeforeUnmount(() => clearTimeout(noticeTimer));
 const router = useRouter();
 async function leave() {
-  await logout().catch(() => {});
-  router.replace("/entrar");
+  try{await logout();router.replace("/entrar");}catch(e){state.error="Não foi possível encerrar a sessão no servidor. Tente sair novamente. "+e.message;}
 }
 </script>
 <template>
