@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch, onBeforeUnmount } from "vue";
 import { request } from "../lib/api";
+import { Minus, Plus } from "@lucide/vue";
 import SlotTotalsFields from "./SlotTotalsFields.vue";
 const props = defineProps({
   characterId: { type: Number, required: true },
@@ -157,13 +158,11 @@ onBeforeUnmount(() => {
     <div class="slot-heading">
       <div>
         <h2 id="slots-title">Espaços de magia</h2>
-        <p class="hint">
-          Marque os espaços gastos durante a sessão. Truques não gastam espaços.
-        </p>
+        <p class="sr-only">O botão menos gasta um espaço e o botão mais recupera um espaço. Truques não gastam espaços.</p>
       </div>
       <button
         v-if="configured.length"
-        class="button"
+        class="text-button"
         :disabled="isBusy || loading || !rows.some((row) => row.used > 0)"
         @click="reset"
       >
@@ -180,41 +179,20 @@ onBeforeUnmount(() => {
       </button>
     </p>
     <template v-if="!loading">
-      <div v-if="configured.length" class="slot-list" :aria-busy="isBusy">
+      <div v-if="configured.length" class="slot-list" :style="{'--slot-columns':configured.length<=5?configured.length:Math.ceil(configured.length/2)}" :aria-busy="isBusy">
         <div v-for="row in configured" :key="row.level" class="slot-row">
           <strong>{{ row.level }}º círculo</strong>
-          <div>
-            <span class="slot-count" aria-live="polite"
-              >{{ row.remaining }}
-              {{ row.remaining === 1 ? "restante" : "restantes" }}</span
-            ><span class="hint">
-              · {{ row.used }} {{ row.used === 1 ? "gasto" : "gastos" }} de
-              {{ row.total }}</span
-            >
-            <div class="slot-marks" aria-hidden="true">
-              <span
-                v-for="n in row.total"
-                :key="n"
-                :class="{ spent: n <= row.used }"
-              ></span>
+          <span class="slot-count" aria-live="polite">{{ row.remaining }} {{ row.remaining === 1 ? 'restante' : 'restantes' }}</span>
+          <div class="slot-controls">
+            <button type="button" class="slot-step" :disabled="isBusy || row.remaining === 0"
+              :aria-label="`Gastar um espaço do ${row.level}º círculo`" title="Gastar um espaço"
+              @click="change(row.level, 'spend')"><Minus :size="16" aria-hidden="true"/></button>
+            <div class="slot-marks" :title="`${row.used} gastos de ${row.total} espaços`" aria-hidden="true">
+              <span v-for="n in row.total" :key="n" :class="{spent:n>row.remaining}"></span>
             </div>
-          </div>
-          <div class="slot-buttons">
-            <button
-              class="button"
-              :disabled="isBusy || row.used === 0"
-              :aria-label="`Recuperar um espaço do ${row.level}º círculo`"
-              @click="change(row.level, 'recover')"
-            >
-              Recuperar 1</button
-            ><button
-              class="button primary"
-              :disabled="isBusy || row.remaining === 0"
-              :aria-label="`Gastar um espaço do ${row.level}º círculo`"
-              @click="change(row.level, 'spend')"
-            >
-              Gastar 1
-            </button>
+            <button type="button" class="slot-step" :disabled="isBusy || row.used === 0"
+              :aria-label="`Recuperar um espaço do ${row.level}º círculo`" title="Recuperar um espaço"
+              @click="change(row.level, 'recover')"><Plus :size="16" aria-hidden="true"/></button>
           </div>
         </div>
       </div>
@@ -253,105 +231,22 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.slot-tracker {
-  margin: 24px 0 30px;
-  padding: 22px 0;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-}
-.slot-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 18px;
-}
-.slot-heading h2 {
-  margin-bottom: 5px;
-}
-.slot-list {
-  display: flex;
-  flex-direction: column;
-}
-.slot-row {
-  display: grid;
-  grid-template-columns: 105px minmax(150px, 1fr) auto;
-  gap: 16px;
-  align-items: center;
-  padding: 14px 0;
-  border-top: 1px solid var(--border);
-}
-.slot-row strong {
-  font-size: 0.9rem;
-}
-.slot-count {
-  font-weight: 600;
-  color: var(--green);
-}
-.slot-buttons {
-  display: flex;
-  gap: 8px;
-}
-.slot-buttons .button {
-  font-size: 0.8rem;
-  padding: 8px 11px;
-}
-.slot-marks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin-top: 7px;
-}
-.slot-marks span {
-  width: 13px;
-  height: 13px;
-  border: 1px solid var(--green);
-  border-radius: 3px;
-  background: var(--green);
-}
-.slot-marks span.spent {
-  background: transparent;
-  border-color: var(--muted);
-}
-.slot-settings {
-  margin-top: 18px;
-}
-.slot-settings summary {
-  cursor: pointer;
-  color: var(--green);
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-.slot-settings > p {
-  margin: 12px 0;
-}
-.slot-inputs {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-  gap: 12px;
-}
-.slot-settings form > .button {
-  align-self: flex-start;
-}
-.slot-tracker > .alert {
-  margin: 12px 0;
-}
-@media (max-width: 760px) {
-  .slot-heading {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 12px;
-  }
-  .slot-row {
-    grid-template-columns: 85px minmax(0, 1fr);
-    gap: 12px;
-  }
-  .slot-buttons {
-    grid-column: 1/-1;
-    justify-content: flex-end;
-  }
-  .slot-inputs {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
+.slot-tracker{margin:18px 0 22px;padding:16px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.slot-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.slot-heading h2{font-size:1.05rem}
+.slot-heading>.text-button{font-size:.8rem;min-height:32px;flex-shrink:0}
+.slot-list{display:grid;grid-template-columns:repeat(var(--slot-columns),minmax(0,1fr));gap:8px}
+.slot-row{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px;min-width:0;padding:10px 6px;background:var(--white);border:1px solid var(--border);border-radius:6px}
+.slot-row strong{font-size:1rem;font-weight:600;white-space:nowrap}
+.slot-count{font-size:.9rem;color:var(--green);font-variant-numeric:tabular-nums}
+.slot-controls{display:grid;grid-template-columns:28px minmax(0,1fr) 28px;align-items:center;gap:4px;width:100%;max-width:164px;margin-top:3px}
+.slot-step{display:flex;align-items:center;justify-content:center;width:28px;min-width:28px;height:32px;padding:0;border:1px solid var(--border);border-radius:5px;background:var(--white);color:var(--green)}
+.slot-step:hover:not(:disabled){background:var(--white);border-color:var(--green)}
+.slot-step:active:not(:disabled){background:var(--border)}
+.slot-marks{display:flex;flex-wrap:wrap;align-content:center;align-items:center;justify-content:center;gap:4px;min-width:0}
+.slot-marks span{width:12px;height:12px;flex-shrink:0;border:1px solid var(--green);border-radius:2px;background:var(--green)}
+.slot-marks span.spent{background:var(--white);border-color:var(--muted)}
+.slot-settings{margin-top:14px}.slot-settings summary{cursor:pointer;color:var(--green);font-size:.9rem;font-weight:600}.slot-settings>p{margin:12px 0}.slot-settings form>.button{align-self:flex-start}
+.slot-tracker>.alert{margin:12px 0}.slot-tracker>.text-button{display:inline-block;font-size:.78rem;margin-top:10px}.slot-tracker>p[role=status]{margin-top:8px}
+@media(max-width:760px){.slot-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.slot-row{padding:10px 6px}.slot-row strong{font-size:.95rem}.slot-count{font-size:.875rem}.slot-heading h2{font-size:1rem}}
 </style>
