@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from "vue-router";
-import { state } from "./lib/store";
+import { state, waitForSession } from "./lib/store";
 const router = createRouter({
   history: createWebHistory(),
   scrollBehavior: (_to, _from, saved) => saved || { top: 0 },
@@ -31,7 +31,8 @@ const router = createRouter({
     { path: "/:pathMatch(.*)*", redirect: "/" },
   ],
 });
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
+  await waitForSession();
   if (!to.meta.public && !state.user) return "/entrar";
   if (to.path === "/entrar" && state.user) return "/";
 });

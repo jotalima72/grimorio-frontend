@@ -1,5 +1,7 @@
 # Grimório — Vue 3 + Vite
 
+Ao reabrir uma página com sessão salva, a interface aguarda a validação do token antes de decidir a rota. Falhas de rede, timeout e erros temporários do servidor mantêm a tela de reconexão e acionam novas tentativas automaticamente. Um `401` com código `UNAUTHENTICATED` confirmado pela API encerra a sessão; falhas de conexão não removem o token. O usuário pode escolher explicitamente entrar com outra conta. Consultas de leitura em uma sessão ativa repetem falhas temporárias até três vezes; gravações não são reenviadas automaticamente.
+
 Frontend independente para personagens, magias preparadas, consulta do catálogo e criação de homebrews. O backend Node tem um repositório separado.
 
 ## Desenvolvimento

@@ -9,7 +9,7 @@ import {
   Plus,
 } from "@lucide/vue";
 import { useRouter } from "vue-router";
-import { state, activeCharacter, chooseCharacter, logout } from "./lib/store";
+import { state, activeCharacter, chooseCharacter, logout, restore, useAnotherAccount } from "./lib/store";
 let noticeTimer;
 watch(
   () => state.notice,
@@ -31,7 +31,7 @@ async function leave() {
     <RouterLink to="/" class="brand"
       ><BookOpen :size="23" /><span>Grimório</span></RouterLink
     ><span class="brand-caption">Seu livro de magias, à mão.</span>
-    <div v-if="state.user" class="account">
+    <div v-if="state.ready&&state.user" class="account">
       <span>{{ state.user.name }}</span
       ><button
         class="icon-button"
@@ -43,7 +43,16 @@ async function leave() {
       </button>
     </div>
   </header>
-  <template v-if="state.user">
+  <main v-if="!state.ready" id="main" class="empty-state" tabindex="-1" aria-busy="true">
+    <BookOpen :size="38" :stroke-width="1.3"/>
+    <h1>Reconectando ao seu grimório</h1>
+    <p role="status">{{state.restoreAttempt>1?'O servidor ainda está iniciando ou sem conexão. Tentaremos novamente automaticamente.':'Estamos conectando ao servidor para verificar sua sessão. Isso pode levar alguns instantes.'}}</p>
+    <p>Sua sessão será mantida enquanto aguardamos.</p>
+    <p v-if="state.restoreError" class="alert" role="alert">{{state.restoreError}}</p>
+    <button v-if="!state.restoring" class="button primary" @click="restore()">Tentar novamente</button>
+    <button class="text-button" @click="useAnotherAccount">Entrar com outra conta</button>
+  </main>
+  <template v-else-if="state.user">
     <div class="app-layout">
       <aside class="navigation">
         <label class="select-label" for="active-character"
@@ -81,6 +90,7 @@ async function leave() {
         </p>
       </aside>
       <main id="main" class="main-content" tabindex="-1">
+        <p v-if="state.reconnecting" class="info-banner" role="status">Reconectando ao servidor… Sua sessão continua ativa. Aguarde enquanto tentamos novamente.</p>
         <div v-if="state.error" class="alert" role="alert">
           {{ state.error }}
           <button class="text-button" @click="state.error = ''">Fechar</button>
