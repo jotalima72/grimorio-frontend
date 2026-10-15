@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, watch, onBeforeUnmount } from "vue";
 import { request } from "../lib/api";
-import { Minus, Plus } from "@lucide/vue";
+import { Minus, Plus, LoaderCircle } from "@lucide/vue";
 import SlotTotalsFields from "./SlotTotalsFields.vue";
 const props = defineProps({
   characterId: { type: Number, required: true },
@@ -15,6 +15,7 @@ const rows = ref([]),
   message = ref("");
 const emit = defineEmits(["state"]);
 const isBusy = computed(() => busy.value || props.externalBusy);
+const pendingChange=ref(null);
 watch(
   [rows, loading, busy],
   () =>
@@ -66,6 +67,7 @@ async function load() {
 async function change(level, action) {
   if (isBusy.value) return;
   busy.value = true;
+  pendingChange.value={level,action};
   error.value = "";
   message.value = "";
   const current = epoch;
@@ -81,7 +83,7 @@ async function change(level, action) {
   } catch (e) {
     if (current === epoch) error.value = e.message;
   } finally {
-    if (current === epoch) busy.value = false;
+    if (current === epoch){busy.value = false;pendingChange.value=null;}
   }
 }
 async function save() {
@@ -142,6 +144,7 @@ watch(
     rows.value = [];
     hasConfiguration.value = false;
     busy.value = false;
+    pendingChange.value=null;
     message.value = "";
     load();
   },
@@ -186,13 +189,15 @@ onBeforeUnmount(() => {
           <div class="slot-controls">
             <button type="button" class="slot-step" :disabled="isBusy || row.remaining === 0"
               :aria-label="`Gastar um espaço do ${row.level}º círculo`" title="Gastar um espaço"
-              @click="change(row.level, 'spend')"><Minus :size="16" aria-hidden="true"/></button>
+              :aria-busy="pendingChange?.level===row.level&&pendingChange?.action==='spend'"
+              @click="change(row.level, 'spend')"><LoaderCircle v-if="pendingChange?.level===row.level&&pendingChange?.action==='spend'" class="slot-spinner" :size="16" aria-hidden="true"/><Minus v-else :size="16" aria-hidden="true"/></button>
             <div class="slot-marks" :title="`${row.used} gastos de ${row.total} espaços`" aria-hidden="true">
               <span v-for="n in row.total" :key="n" :class="{spent:n>row.remaining}"></span>
             </div>
             <button type="button" class="slot-step" :disabled="isBusy || row.used === 0"
               :aria-label="`Recuperar um espaço do ${row.level}º círculo`" title="Recuperar um espaço"
-              @click="change(row.level, 'recover')"><Plus :size="16" aria-hidden="true"/></button>
+              :aria-busy="pendingChange?.level===row.level&&pendingChange?.action==='recover'"
+              @click="change(row.level, 'recover')"><LoaderCircle v-if="pendingChange?.level===row.level&&pendingChange?.action==='recover'" class="slot-spinner" :size="16" aria-hidden="true"/><Plus v-else :size="16" aria-hidden="true"/></button>
           </div>
         </div>
       </div>
@@ -226,6 +231,7 @@ onBeforeUnmount(() => {
       to="/personagens"
       >Editar personagem e espaços</RouterLink
     >
+    <span v-if="pendingChange" class="sr-only" role="status">Atualizando espaços do {{pendingChange.level}}º círculo. Aguarde.</span>
     <p v-if="message" class="hint" role="status">{{ message }}</p>
   </section>
 </template>
@@ -243,6 +249,10 @@ onBeforeUnmount(() => {
 .slot-step{display:flex;align-items:center;justify-content:center;width:28px;min-width:28px;height:32px;padding:0;border:1px solid var(--border);border-radius:5px;background:var(--white);color:var(--green)}
 .slot-step:hover:not(:disabled){background:var(--white);border-color:var(--green)}
 .slot-step:active:not(:disabled){background:var(--border)}
+.slot-step[aria-busy=true]{opacity:1;cursor:wait}
+.slot-spinner{animation:slot-spin .8s linear infinite}
+@keyframes slot-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.slot-spinner{animation:none}}
 .slot-marks{display:flex;flex-wrap:wrap;align-content:center;align-items:center;justify-content:center;gap:4px;min-width:0}
 .slot-marks span{width:12px;height:12px;flex-shrink:0;border:1px solid var(--green);border-radius:2px;background:var(--green)}
 .slot-marks span.spent{background:var(--white);border-color:var(--muted)}
