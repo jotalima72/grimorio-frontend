@@ -65,3 +65,16 @@ Robots.txt orienta robôs cooperativos, sem substituir autenticação. URLs já 
 ## Seleção de magias por classe
 
 Em Classes e compêndios, clique na classe para abrir as magias ainda sem vínculo. Filtre por nome, escola ou círculo, marque magias (ou a página inteira) e use Adicionar como homebrew. A seleção é mantida entre páginas e filtros, com limite de 500 por operação. Os vínculos ficam na sua conta e preservam os textos das magias.
+
+## Espaços de magia
+
+A página Magias preparadas inclui um marcador por personagem. Em Configurar espaços por círculo, informe os totais da ficha para o 1º ao 9º círculo (0 para círculos sem espaços, máximo 20 por círculo). Os totais são manuais: não são calculados a partir da classe ou do número de magias preparadas, permitindo homebrew e ajustes da mesa.
+
+Gastar 1 consome um espaço; Recuperar 1 desfaz um gasto; Recuperar todos zera os gastos, mantendo os totais. Os valores são salvos no backend, separados por personagem e conta. Truques não entram no controle. Para uma conjuração em círculo superior, marque um espaço do círculo efetivamente usado. O controle não altera a lista preparada.
+
+Publique primeiro o backend com a migração dos espaços e depois este frontend.
+### Onde configurar os espaços
+
+Em Magias preparadas, Configurar espaços por círculo aparece apenas para personagens ainda não configurados. Após salvar, os ajustes ficam na edição da página Personagens, junto de nome, classe e nível. Uma configuração salva com todos os totais em zero também conta como concluída. Gastar e recuperar espaços continuam disponíveis na página de magias preparadas.
+
+Na lista de magias preparadas e no seu modal, Usar magia consome um espaço do círculo daquela magia e atualiza os contadores na página. Truques são gratuitos. Sem espaços disponíveis, o botão fica desabilitado. É possível desfazer o gasto usando Recuperar 1 no marcador de espaços.
