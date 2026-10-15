@@ -8,7 +8,11 @@ export default async function proxy(req,res){
  }catch{return fail(503,'PROXY_NOT_CONFIGURED','Configure BACKEND_URL com a URL HTTPS do backend no Render.');}
  const path=new URL(req.url,'https://frontend.local');
  const rewritten=req.query?.__route??path.searchParams.get('__route');
- if(typeof rewritten==='string')path.pathname='/api/'+rewritten;
+ if(typeof rewritten==='string'){
+  path.pathname='/api/'+rewritten;
+  // O parâmetro capturado pelo rewrite da Vercel não é um filtro da API.
+  path.searchParams.delete('path');
+ }
  path.searchParams.delete('__route');
  if(!path.pathname.startsWith('/api/'))return fail(404,'NOT_FOUND','Rota não encontrada.');
  if(!['GET','HEAD','POST','PUT','PATCH','DELETE','OPTIONS'].includes(req.method))return fail(405,'METHOD_NOT_ALLOWED','Método não permitido.');

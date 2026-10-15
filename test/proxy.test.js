@@ -24,3 +24,14 @@ test('rewrite da Vercel conserva caminho e filtros da API',async()=>{
  const res=response();await proxy({url:'/api/gateway?level=3&limit=40&__route=spells',query:{__route:'spells'},method:'GET',headers:{}},res);
  assert.equal(res.statusCode,200);
 });
+
+test('rewrite remove o parâmetro path interno sem perder filtros e paginação',async()=>{
+ globalThis.fetch=async(url)=>{
+  assert.equal(url.pathname,'/api/spells');
+  assert.deepEqual(Object.fromEntries(url.searchParams),{name:'Mísseis',schoolId:'1',classId:'2',characterId:'3',level:'1',limit:'40',offset:'40'});
+  return new Response('{"data":[],"meta":{"total":0}}');
+ };
+ const res=response();
+ await proxy({url:'/api/gateway?path=spells&__route=spells&name=M%C3%ADsseis&schoolId=1&classId=2&characterId=3&level=1&limit=40&offset=40',query:{path:'spells',__route:'spells'},method:'GET',headers:{}},res);
+ assert.equal(res.statusCode,200);
+});
