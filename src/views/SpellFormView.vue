@@ -18,6 +18,7 @@ const form = ref({
     description: "",
     imagePath: "",
     classIds: [],
+    canUpcast: false,
   }),
   busy = ref(false),
   loading = ref(!!editId),
@@ -34,7 +35,7 @@ onMounted(async () => {
       )
         throw new Error("Só é possível editar suas próprias magias homebrew.");
       for (const k of Object.keys(form.value))
-        if (k !== "classIds") form.value[k] = spell[k] ?? "";
+        if (k !== "classIds") form.value[k] = spell[k] ?? (k==='canUpcast'?false:"");
     } else form.value.schoolId = state.schools[0]?.id || "";
     initial.value = JSON.stringify(form.value);
   } catch (e) {
@@ -163,6 +164,7 @@ async function save() {
     </section>
     <section class="form-section">
       <h2>Descrição completa</h2>
+      <label class="checkbox-label"><input type="checkbox" v-model="form.canUpcast"/><span>Permitir aprimoramento por círculo superior<small>Marque se a magia tem efeitos aprimorados ao gastar um espaço superior. Válido do 1º ao 8º círculo.</small></span></label>
       <label
         ><span class="sr-only">Descrição da magia</span
         ><textarea

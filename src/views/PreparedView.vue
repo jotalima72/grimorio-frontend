@@ -1,4 +1,5 @@
 <script setup>
+import CastSpellDialog from '../components/CastSpellDialog.vue';
 import CircleFilter from "../components/CircleFilter.vue";
 import SpellSlots from "../components/SpellSlots.vue";
 import { ref, computed, watch, onBeforeUnmount } from "vue";
@@ -26,41 +27,39 @@ const tracker = ref(null),
   slotState = ref({ rows: [], loading: true, busy: false }),
   castingId = ref(null),
   castError = ref("");
+const castChoice=ref(null),castingState=ref({concentration:null,lastUse:null}),castingLoading=ref(true),undoBusy=ref(false);
+const actionBusy=computed(()=>castingId.value!==null||undoBusy.value);
 function canUse(spell) {
-  return (
-    !castingId.value &&
-    !slotState.value.busy &&
-    !pendingIds.value.includes(spell.id) &&
-    (spell.level === 0 ||
-      (!slotState.value.loading &&
-        slotState.value.rows.some(
-          (row) => row.level === spell.level && row.remaining > 0,
-        )))
-  );
+ return !actionBusy.value&&!castingLoading.value&&!slotState.value.busy&&!pendingIds.value.includes(spell.id)&&
+  (spell.level===0||(!slotState.value.loading&&slotState.value.rows.some(row=>(row.level===spell.level||(spell.canUpcast&&row.level>spell.level))&&row.remaining>0)));
 }
-async function useSpell(spell) {
-  if (!canUse(spell)) return;
-  const id = state.activeId;
-  castingId.value = spell.id;
-  castError.value = "";
-  try {
-    const response = await request(
-      `/characters/${id}/prepared-spells/${spell.id}/use`,
-      { method: "POST" },
-    );
-    if (state.activeId === id) {
-      tracker.value?.applyUsage(response.data.slot);
-      notify(
-        response.data.level === 0
-          ? `${spell.name} usada. Truques não gastam espaços.`
-          : `${spell.name} usada. Um espaço do ${response.data.level}º círculo foi gasto.`,
-      );
-    }
-  } catch (e) {
-    if (state.activeId === id) castError.value = e.message;
-  } finally {
-    castingId.value = null;
-  }
+function useSpell(spell){if(canUse(spell)){castError.value='';castChoice.value=spell;}}
+async function refreshCasting(id=state.activeId){
+ const response=await request(`/characters/${id}/casting`);
+ if(state.activeId===id)castingState.value=response.data;
+}
+async function castSpell(body){
+ const spell=castChoice.value;if(!spell||!canUse(spell))return;
+ const id=state.activeId;castingId.value=spell.id;castError.value='';
+ try{
+  const response=await request(`/characters/${id}/prepared-spells/${spell.id}/use`,{method:'POST',body});
+  if(state.activeId===id){tracker.value?.applyUsage(response.data.slot);castingState.value=response.data;castChoice.value=null;
+   notify(response.data.level===0?`${spell.name} usada. Truques não gastam espaços.`:`${spell.name} usada com espaço do ${response.data.level}º círculo.`);}
+ }catch(e){if(state.activeId===id){castError.value=e.message;try{await refreshCasting(id);}catch{} }}
+ finally{castingId.value=null;}
+}
+async function undoUse(){
+ if(actionBusy.value||slotState.value.busy||!castingState.value.lastUse)return;
+ const id=state.activeId,useId=castingState.value.lastUse.id;undoBusy.value=true;castError.value='';
+ try{const response=await request(`/characters/${id}/casting/undo`,{method:'POST',body:{useId}});
+  if(state.activeId===id){tracker.value?.applyUsage(response.data.slot);castingState.value=response.data;notify('Uso desfeito. Espaço e concentração restaurados.');}
+ }catch(e){if(state.activeId===id){castError.value=e.message;try{await refreshCasting(id);}catch{}}}finally{undoBusy.value=false;}
+}
+async function endConcentration(){
+ if(actionBusy.value||slotState.value.busy)return;
+ const id=state.activeId;undoBusy.value=true;castError.value='';
+ try{const response=await request(`/characters/${id}/concentration`,{method:'DELETE'});if(state.activeId===id)castingState.value=response.data;}
+ catch(e){if(state.activeId===id)castError.value=e.message;}finally{undoBusy.value=false;}
 }
 const groups = computed(() =>
   groupSpells(
@@ -70,16 +69,20 @@ const groups = computed(() =>
 async function load() {
   const current = ++epoch;
   selectedId.value = null;
+  castChoice.value=null;castingState.value={concentration:null,lastUse:null};castingLoading.value=true;
   castError.value = "";
   error.value = "";
   spells.value = [];
   if (!activeCharacter.value) return;
   loading.value = true;
+  const characterId=activeCharacter.value.id;
   try {
     const result = await request(
-      `/characters/${activeCharacter.value.id}/prepared-spells`,
+      `/characters/${characterId}/prepared-spells`,
     );
     if (current === epoch) spells.value = result.data;
+    await refreshCasting(characterId);
+    if(current===epoch)castingLoading.value=false;
   } catch (e) {
     if (current === epoch) error.value = e.message;
   } finally {
@@ -87,7 +90,7 @@ async function load() {
   }
 }
 async function remove(spell) {
-  if (castingId.value || pendingIds.value.includes(spell.id)) return;
+  if (actionBusy.value || pendingIds.value.includes(spell.id)) return;
   const c = activeCharacter.value;
   if (!c) return;
   pendingIds.value.push(spell.id);
@@ -115,6 +118,9 @@ watch(
   },
   { immediate: true },
 );
+watch(()=>slotState.value.busy,async(busy,previous)=>{
+ if(previous&&!busy&&state.activeId){try{await refreshCasting();}catch(e){castError.value=e.message;}}
+});
 onBeforeUnmount(() => epoch++);
 </script>
 <template>
@@ -160,9 +166,13 @@ onBeforeUnmount(() => epoch++);
       ref="tracker"
       :key="activeCharacter.id"
       :character-id="activeCharacter.id"
-      :external-busy="castingId !== null"
+      :external-busy="actionBusy"
       @state="slotState = $event"
     />
+    <section v-if="castingState.concentration||castingState.lastUse" class="casting-status" aria-label="Conjuração atual" aria-live="polite">
+      <div v-if="castingState.concentration" class="casting-status-row"><div><strong>Concentração: {{castingState.concentration.name}}</strong><p>{{castingState.concentration.duration}}</p></div><button class="button" :disabled="actionBusy||slotState.busy" @click="endConcentration">{{undoBusy?'Salvando…':'Encerrar concentração'}}</button></div>
+      <div v-if="castingState.lastUse" class="casting-status-row"><span>Último uso: <strong>{{castingState.lastUse.name}}</strong> · {{castingState.lastUse.level?`${castingState.lastUse.level}º círculo`:'Truque'}}</span><button class="button" :disabled="actionBusy||slotState.busy" @click="undoUse">{{undoBusy?'Salvando…':'Desfazer uso'}}</button></div>
+    </section>
     <div class="filters compact">
       <label class="search-field"
         ><span class="sr-only">Buscar nas preparadas</span
@@ -245,7 +255,7 @@ onBeforeUnmount(() => epoch++);
     :id="selectedId"
     :prepared="true"
     :eligible="true"
-    :pending="pendingIds.includes(selectedId) || castingId !== null"
+    :pending="pendingIds.includes(selectedId) || actionBusy"
     show-use
     :use-disabled="
       !canUse(spells.find((s) => s.id === selectedId) || { level: 1 })
@@ -256,4 +266,8 @@ onBeforeUnmount(() => epoch++);
     @close="selectedId = null"
     @toggle="remove"
   />
+  <CastSpellDialog v-if="castChoice" :spell="castChoice" :slots="slotState.rows" :concentration="castingState.concentration" :busy="actionBusy" :error="castError" @close="castChoice=null" @cast="castSpell"/>
 </template>
+<style scoped>
+.casting-status{border:1px solid var(--line,#cbd5d1);border-radius:12px;background:white;padding:4px 18px;margin:0 0 24px}.casting-status-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;line-height:1.5}.casting-status-row+.casting-status-row{border-top:1px solid var(--line,#cbd5d1)}.casting-status-row p{font-size:.9rem;margin:4px 0 0}.casting-status-row .button{flex-shrink:0}@media(max-width:600px){.casting-status-row{align-items:flex-start;flex-direction:column;gap:10px}.casting-status-row .button{align-self:flex-end}}
+</style>
