@@ -1,5 +1,6 @@
 <script setup>
 import CastSpellDialog from '../components/CastSpellDialog.vue';
+import CharacterMagicSummary from '../components/CharacterMagicSummary.vue';
 import CircleFilter from "../components/CircleFilter.vue";
 import SpellSlots from "../components/SpellSlots.vue";
 import { ref, computed, watch, onBeforeUnmount } from "vue";
@@ -162,6 +163,7 @@ onBeforeUnmount(() => epoch++);
         {{ activeCharacter.level }}</span
       >
     </div>
+    <CharacterMagicSummary :character="activeCharacter"/>
     <SpellSlots
       ref="tracker"
       :key="activeCharacter.id"
